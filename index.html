@@ -1,0 +1,1775 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英語勉強サイト</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <style>
+        /* 既存のCSSをここに貼り付けます */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .user-info {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .auth-container {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .auth-input {
+            padding: 15px;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .auth-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .auth-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.3s;
+        }
+
+        .auth-btn:hover {
+            background: #5a67d8;
+        }
+
+        .auth-toggle {
+            text-align: center;
+            margin-top: 15px;
+            color: #667eea;
+            cursor: pointer;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .nav-btn {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .nav-btn.active {
+            background: #ffd700;
+            color: #333;
+        }
+
+        .page {
+            display: none;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            min-height: 500px;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #667eea;
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .word-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .word-card {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .word-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border-color: #667eea;
+        }
+
+        .word-card.mastered {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .word-card.learning {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+
+        .word-card.flipped .word-front {
+            display: none;
+        }
+
+        .word-card.flipped .word-back {
+            display: block;
+        }
+
+        .word-front, .word-back {
+            transition: all 0.3s ease;
+        }
+
+        .word-back {
+            display: none;
+        }
+
+        .word-english {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .word-japanese {
+            font-size: 1.3em;
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .word-level {
+            font-size: 0.9em;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .mastery-score {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .mastery-score.high {
+            background: #28a745;
+        }
+
+        .mastery-score.medium {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .mastery-score.low {
+            background: #dc3545;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn.secondary {
+            background: #28a745;
+        }
+
+        .btn.secondary:hover {
+            background: #218838;
+        }
+
+        .btn.danger {
+            background: #dc3545;
+        }
+
+        .btn.danger:hover {
+            background: #c82333;
+        }
+
+        .progress-info {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        .quiz-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .quiz-word {
+            text-align: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .quiz-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .quiz-option {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .quiz-option:hover {
+            border-color: #667eea;
+            background: #e6f3ff;
+        }
+
+        .quiz-option.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .quiz-option.correct {
+            background: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        .quiz-option.incorrect {
+            background: #dc3545;
+            color: white;
+            border-color: #dc3545;
+        }
+
+        .quiz-result {
+            text-align: center;
+            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .quiz-result.show {
+            display: block;
+        }
+
+        .quiz-result.correct {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .quiz-result.incorrect {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            /* Added margin-top to avoid overlapping with quiz options */
+            margin-top: 20px;
+        }
+
+        .mistakes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .mistakes-table th,
+        .mistakes-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .mistakes-table th {
+            background: #667eea;
+            color: white;
+        }
+
+        .mistakes-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            color: #667eea;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .completion-message {
+            text-align: center;
+            padding: 30px;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .filter-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            color: #667eea;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .study-mode-selector {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .mode-btn {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            color: #667eea;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1em;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+
+        .mode-btn:hover, .mode-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .srs-indicator {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .srs-new {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .srs-learning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .srs-review {
+            background: #28a745;
+            color: white;
+        }
+
+        .srs-due {
+            background: #dc3545;
+            color: white;
+        }
+
+        .virtual-scroll-container {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+        }
+
+        .virtual-scroll-content {
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .nav-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .quiz-options {
+                grid-template-columns: 1fr;
+            }
+            
+            .word-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎓 英語勉強サイト</h1>
+            <p>AI搭載の効率的な英単語学習システム</p>
+        </div>
+
+        <div id="authContainer" class="auth-container">
+            <h2 style="text-align: center; margin-bottom: 20px; color: #667eea;">ログイン / 新規登録</h2>
+            <div class="auth-form">
+                <input type="email" id="emailInput" class="auth-input" placeholder="メールアドレス" required>
+                <input type="password" id="passwordInput" class="auth-input" placeholder="パスワード" required>
+                <button id="authBtn" class="auth-btn">ログイン</button>
+                <div class="auth-toggle" onclick="toggleAuthMode()">
+                    <span id="authToggleText">新規登録はこちら</span>
+                </div>
+                <p id="authError" style="color: red; text-align: center; margin-top: 10px;"></p>
+            </div>
+        </div>
+
+        <div id="mainApp" style="display: none;">
+            <div class="user-info">
+                <span id="userEmail"></span>
+                <button class="btn danger" onclick="logout()" style="margin-left: 20px;">ログアウト</button>
+            </div>
+
+            <div class="nav-buttons">
+                <button class="nav-btn active" id="navStudy" onclick="showPage('study')">単語学習</button>
+                <button class="nav-btn" id="navReview" onclick="showPage('review')">単語復習</button>
+                <button class="nav-btn" id="navFlashcard" onclick="showPage('flashcard')">フラッシュカード</button>
+                <button class="nav-btn" id="navAnalytics" onclick="showPage('analytics')">学習分析</button>
+            </div>
+
+            <div id="study" class="page active">
+                <div class="section-title">📚 単語学習</div>
+                
+                <div class="study-mode-selector">
+                    <button class="mode-btn active" id="modeNormal" onclick="setStudyMode('normal')">通常学習</button>
+                    <button class="mode-btn" id="modeSRS" onclick="setStudyMode('srs')">間隔反復学習</button>
+                </div>
+
+                <div class="filter-controls">
+                    <button class="filter-btn active" onclick="filterByLevel('all')">全て</button>
+                    <button class="filter-btn" onclick="filterByLevel(6)">小6</button>
+                    <button class="filter-btn" onclick="filterByLevel(7)">中1</button>
+                    <button class="filter-btn" onclick="filterByLevel(8)">中2</button>
+                    <button class="filter-btn" onclick="filterByLevel(9)">中3</button>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalWordsCount">0</div>
+                        <div class="stat-label">総単語数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="masteredWordsCount">0</div>
+                        <div class="stat-label">習得単語</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="learningWordsCount">0</div>
+                        <div class="stat-label">学習中単語</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="dueWordsCount">0</div>
+                        <div class="stat-label">復習予定</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn" id="prevBtn" onclick="changePage(-1)">前へ</button>
+                    <span id="pageInfo"></span>
+                    <button class="btn" id="nextBtn" onclick="changePage(1)">次へ</button>
+                </div>
+                <div id="wordGrid" class="word-grid"></div>
+            </div>
+
+            <div id="review" class="page">
+                <div class="section-title">📖 単語復習</div>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="reviewAvailableCount">0</div>
+                        <div class="stat-label">復習可能単語</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="reviewScoreDisplay">0%</div>
+                        <div class="stat-label">正答率</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="mistakeCountDisplay">0</div>
+                        <div class="stat-label">間違えた単語</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn" onclick="startReview()">復習を開始</button>
+                    <button class="btn" onclick="startSRSReview()">SRS復習</button>
+                    <button class="btn" onclick="retakeWrongWords()" id="retakeBtn" style="display: none;">間違えた単語の再テスト</button>
+                </div>
+
+                <div id="quizContainer" class="quiz-container" style="display: none;">
+                    <div class="progress-info">
+                        <span id="quizProgress">問題 1 / 10</span>
+                    </div>
+                    
+                    <div class="quiz-word" id="quizWord"></div>
+                    
+                    <div class="quiz-options" id="quizOptions">
+                        </div>
+                    
+                    <div class="quiz-result" id="quizResult">
+                        <p id="resultText"></p>
+                    </div>
+                    
+                    <div class="controls">
+                        <button class="btn" id="nextQuizBtn" onclick="nextQuiz()" style="display: none;">次の問題</button>
+                        <button class="btn" id="finishQuizBtn" onclick="finishQuiz()" style="display: none;">結果を見る</button>
+                    </div>
+                </div>
+
+                <div id="resultsContainer" style="display: none;">
+                    <div class="completion-message">
+                        <h3>復習完了！</h3>
+                        <p id="finalScore">正答率: 0%</p>
+                    </div>
+                    
+                    <div id="mistakesSection" style="display: none;">
+                        <h3 style="margin-top: 30px; color: #667eea;">間違えた単語</h3>
+                        <table class="mistakes-table">
+                            <thead>
+                                <tr>
+                                    <th>英語</th>
+                                    <th>日本語</th>
+                                    <th>あなたの答え</th>
+                                    <th>習得度変化</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mistakesTableBody">
+                                </tbody>
+                        </table>
+                    </div>
+                    <div class="controls" style="margin-top: 20px;">
+                        <button class="btn secondary" onclick="location.reload()">復習トップに戻る</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="flashcard" class="page">
+                <div class="section-title">🎴 フラッシュカード</div>
+                
+                <div class="controls">
+                    <button class="btn" onclick="startFlashcards()">フラッシュカード開始</button>
+                    <button class="btn secondary" onclick="shuffleCards()">シャッフル</button>
+                </div>
+
+                <div id="flashcardContainer" style="display: none;">
+                    <div class="progress-info">
+                        <span id="flashcardProgress">カード 1 / 10</span>
+                    </div>
+                    
+                    <div class="quiz-word" id="flashcardWord" onclick="flipCard()">
+                        <div id="flashcardFront"></div>
+                        <div id="flashcardBack" style="display: none;"></div>
+                        <p style="font-size: 0.8em; margin-top: 10px; color: #666;">クリックして意味を表示</p>
+                    </div>
+                    
+                    <div class="controls">
+                        <button class="btn danger" onclick="markDifficulty('difficult')">難しい</button>
+                        <button class="btn" onclick="markDifficulty('normal')">普通</button>
+                        <button class="btn secondary" onclick="markDifficulty('easy')">簡単</button>
+                    </div>
+                    
+                    <div class="controls">
+                        <button class="btn" onclick="prevCard()">前のカード</button>
+                        <button class="btn" onclick="nextCard()">次のカード</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="analytics" class="page">
+                <div class="section-title">📊 学習分析</div>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalStudyTime">0</div>
+                        <div class="stat-label">総学習時間（分）</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="averageScore">0%</div>
+                        <div class="stat-label">平均正答率（%）</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="streakDays">0</div>
+                        <div class="stat-label">連続学習日数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="weakWords">0</div>
+                        <div class="stat-label">苦手単語数</div>
+                    </div>
+                </div>
+
+                <div class="section-title">🎯 効果的な学習法の提案</div>
+                <div id="studyRecommendations" style="background: #f8f9fa; padding: 20px; border-radius: 15px; margin-bottom: 20px;">
+                    <p>学習データを分析中...</p>
+                </div>
+
+                <div class="section-title">📈 学習履歴</div>
+                <div class="virtual-scroll-container">
+                    <div class="virtual-scroll-content">
+                        <div id="studyHistory">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingWords" class="loading" style="display: none;"></div>
+
+    <script>
+        // Firebase設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyDlbi89qgkqGPtlpn-_-5M70A8VqUZ6vOw", // あなたのAPIキー
+            authDomain: "english-study-17524.firebaseapp.com", // あなたのAuthドメイン
+            projectId: "english-study-17524", // あなたのプロジェクトID
+            storageBucket: "english-study-17524.firebasestorage.app", // あなたのStorageバケット
+            messagingSenderId: "533186094098", // あなたのSender ID
+            appId: "1:533186094098:web:5a8537aa45fefb3690e4cb", // あなたのApp ID
+            measurementId: "G-0B6BKE1DSQ" // これはAnalytics用ですが、残しておいても問題ありません
+        };
+        
+        // Firebase初期化
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // アプリケーションの状態
+        let currentUser = null;
+        let currentStudyPage = 1;
+        let currentLevelFilter = 'all';
+        let currentStudyMode = 'normal';
+        let wordData = []; // Firestoreから取得した全単語
+        let userProgress = {}; // ユーザーの各単語の学習進捗
+        let studyHistory = []; // ユーザーの学習履歴
+        let currentQuizWords = []; // 現在のクイズ用の単語リスト
+        let currentQuizIndex = 0;
+        let quizAnswers = []; // クイズの回答結果
+        let currentQuizWord = null;
+        let selectedOption = null;
+        let mistakes = []; // クイズ中に間違えた単語
+        let isRetakeMode = false;
+        let flashcardIndex = 0;
+        let flashcardFlipped = false;
+        let isAuthLogin = true; // ログインモードか新規登録モードか
+        let studyStartTime = null; // 学習時間の計測開始時刻
+
+        const WORDS_PER_PAGE = 10;
+        const QUIZ_WORDS_COUNT = 10; // クイズで出題する単語数
+        const FLASHCARD_WORDS_COUNT = 10; // フラッシュカードで出題する単語数
+
+        // SRS (Spaced Repetition System) 間隔（日数）
+        // score: 0=全く分からない, 1=少し分かる, 2=普通, 3=よく分かる
+        const SRS_INTERVALS_MAP = {
+            'difficult': 0, // その日に再テスト
+            'normal': 1, // 次の日
+            'easy': 3   // 3日後
+        };
+
+        // DOM要素の取得 (新しいID/クラス名に合わせて更新)
+        const authContainer = document.getElementById('authContainer');
+        const mainApp = document.getElementById('mainApp');
+        const emailInput = document.getElementById('emailInput');
+        const passwordInput = document.getElementById('passwordInput');
+        const authBtn = document.getElementById('authBtn');
+        const authToggleText = document.getElementById('authToggleText');
+        const authError = document.getElementById('authError');
+        const userEmailSpan = document.getElementById('userEmail');
+
+        const navButtons = document.querySelectorAll('.nav-btn');
+        const studyPage = document.getElementById('study');
+        const reviewPage = document.getElementById('review');
+        const flashcardPage = document.getElementById('flashcard');
+        const analyticsPage = document.getElementById('analytics');
+
+        const totalWordsCountSpan = document.getElementById('totalWordsCount');
+        const masteredWordsCountSpan = document.getElementById('masteredWordsCount');
+        const learningWordsCountSpan = document.getElementById('learningWordsCount');
+        const dueWordsCountSpan = document.getElementById('dueWordsCount');
+        
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const pageInfoSpan = document.getElementById('pageInfo');
+        const loadingWordsDiv = document.getElementById('loadingWords');
+        const wordGrid = document.getElementById('wordGrid');
+
+        const reviewAvailableCountSpan = document.getElementById('reviewAvailableCount');
+        const reviewScoreDisplay = document.getElementById('reviewScoreDisplay');
+        const mistakeCountDisplay = document.getElementById('mistakeCountDisplay');
+        const retakeBtn = document.getElementById('retakeBtn');
+
+        const quizContainer = document.getElementById('quizContainer');
+        const quizProgressSpan = document.getElementById('quizProgress');
+        const quizWordDiv = document.getElementById('quizWord');
+        const quizOptionsDiv = document.getElementById('quizOptions');
+        const quizResultDiv = document.getElementById('quizResult');
+        const resultTextP = document.getElementById('resultText');
+        const nextQuizBtn = document.getElementById('nextQuizBtn');
+        const finishQuizBtn = document.getElementById('finishQuizBtn');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const finalScoreP = document.getElementById('finalScore');
+        const mistakesSection = document.getElementById('mistakesSection');
+        const mistakesTableBody = document.getElementById('mistakesTableBody');
+
+        const flashcardContainer = document.getElementById('flashcardContainer');
+        const flashcardProgressSpan = document.getElementById('flashcardProgress');
+        const flashcardFrontDiv = document.getElementById('flashcardFront');
+        const flashcardBackDiv = document.getElementById('flashcardBack');
+        
+        const totalStudyTimeSpan = document.getElementById('totalStudyTime');
+        const averageScoreSpan = document.getElementById('averageScore');
+        const streakDaysSpan = document.getElementById('streakDays');
+        const weakWordsSpan = document.getElementById('weakWords');
+        const studyRecommendationsDiv = document.getElementById('studyRecommendations');
+        const studyHistoryDiv = document.getElementById('studyHistory');
+
+
+        // --- Firebase認証関連 ---
+        auth.onAuthStateChanged(async (user) => {
+            currentUser = user;
+            if (user) {
+                authContainer.style.display = 'none';
+                mainApp.style.display = 'block';
+                userEmailSpan.textContent = `ログイン中: ${user.email}`;
+                await fetchUserData(user.uid);
+                await loadAllWords(); // 単語データの読み込み
+                showPage('study'); // ログインしたら単語学習ページへ
+                startStudyTimer();
+            } else {
+                authContainer.style.display = 'block';
+                mainApp.style.display = 'none';
+                // ログアウト時はすべての状態をリセット
+                currentUser = null;
+                wordData = [];
+                userProgress = {};
+                studyHistory = [];
+                stopStudyTimer();
+            }
+            updateStudyStats(); // ログイン状態が変わるたびに統計を更新
+        });
+
+        async function fetchUserData(uid) {
+            const userDocRef = db.collection('users').doc(uid);
+            const docSnap = await userDocRef.get();
+            if (docSnap.exists) {
+                userProgress = docSnap.data().progress || {};
+                studyHistory = docSnap.data().history || [];
+            } else {
+                // 新規ユーザーの場合、初期データを設定
+                await userDocRef.set({
+                    progress: {},
+                    history: []
+                });
+                userProgress = {};
+                studyHistory = [];
+            }
+        }
+
+        async function updateUserData() {
+            if (currentUser) {
+                const userDocRef = db.collection('users').doc(currentUser.uid);
+                await userDocRef.update({
+                    progress: userProgress,
+                    history: studyHistory
+                });
+                updateStudyStats();
+            }
+        }
+
+        authBtn.addEventListener('click', async () => {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            authError.textContent = ''; // エラーメッセージをクリア
+
+            if (isAuthLogin) {
+                // ログインモード
+                try {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } catch (error) {
+                    authError.textContent = `ログインエラー: ${error.message}`;
+                }
+            } else {
+                // 新規登録モード
+                try {
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    await db.collection('users').doc(userCredential.user.uid).set({
+                        email: userCredential.user.email,
+                        progress: {},
+                        history: []
+                    });
+                } catch (error) {
+                    authError.textContent = `新規登録エラー: ${error.message}`;
+                }
+            }
+        });
+
+        function toggleAuthMode() {
+            isAuthLogin = !isAuthLogin;
+            authBtn.textContent = isAuthLogin ? 'ログイン' : '新規登録';
+            authToggleText.textContent = isAuthLogin ? '新規登録はこちら' : 'ログインはこちら';
+            authError.textContent = ''; // モード切り替え時にエラーをクリア
+        }
+
+        function logout() {
+            auth.signOut();
+        }
+
+        // --- ページ表示切り替え ---
+        function showPage(pageId) {
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`nav${capitalizeFirstLetter(pageId)}`).classList.add('active');
+
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+
+            // 各ページ表示時の初期化・データ更新
+            if (pageId === 'study') {
+                displayWords(currentStudyPage);
+                updateStudyStats();
+            } else if (pageId === 'review') {
+                updateReviewStats();
+                resetQuizPage();
+            } else if (pageId === 'flashcard') {
+                resetFlashcardPage();
+            } else if (pageId === 'analytics') {
+                updateAnalytics();
+            }
+        }
+
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+
+        // --- 単語データ管理 (Firestore) ---
+        async function loadAllWords() {
+            loadingWordsDiv.style.display = 'block';
+            const snapshot = await db.collection('words').get();
+            wordData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            loadingWordsDiv.style.display = 'none';
+            console.log("Words loaded:", wordData);
+            displayWords(currentStudyPage);
+            updateStudyStats(); // 単語読み込み後に統計を更新
+        }
+
+        // 初期単語データをFirestoreに一括追加 (開発・初回用)
+        // この関数は一度実行したらコメントアウトするか削除してください
+        async function addInitialWordsToFirestore() {
+            const initialWords = [
+                // 小6レベル
+                { english: "apple", japanese: "りんご", level: 6, category: "食べ物" },
+                { english: "book", japanese: "本", level: 6, category: "学習" },
+                { english: "cat", japanese: "猫", level: 6, category: "動物" },
+                { english: "dog", japanese: "犬", level: 6, category: "動物" },
+                { english: "egg", japanese: "卵", level: 6, category: "食べ物" },
+                { english: "fish", japanese: "魚", level: 6, category: "動物" },
+                { english: "girl", japanese: "女の子", level: 6, category: "人" },
+                { english: "hand", japanese: "手", level: 6, category: "体" },
+                { english: "ice", japanese: "氷", level: 6, category: "自然" },
+                { english: "juice", japanese: "ジュース", level: 6, category: "飲み物" },
+                { english: "king", japanese: "王", level: 6, category: "人" },
+                { english: "lion", japanese: "ライオン", level: 6, category: "動物" },
+                { english: "milk", japanese: "牛乳", level: 6, category: "飲み物" },
+                { english: "nose", japanese: "鼻", level: 6, category: "体" },
+                { english: "orange", japanese: "オレンジ", level: 6, category: "食べ物" },
+                { english: "pen", japanese: "ペン", level: 6, category: "学習" },
+                { english: "queen", japanese: "女王", level: 6, category: "人" },
+                { english: "red", japanese: "赤い", level: 6, category: "色" },
+                { english: "sun", japanese: "太陽", level: 6, category: "自然" },
+                { english: "tree", japanese: "木", level: 6, category: "自然" },
+                // 中1レベル
+                { english: "beautiful", japanese: "美しい", level: 7, category: "形容詞" },
+                { english: "clean", japanese: "きれいな", level: 7, category: "形容詞" },
+                { english: "difficult", japanese: "難しい", level: 7, category: "形容詞" },
+                { english: "easy", japanese: "簡単な", level: 7, category: "形容詞" },
+                { english: "famous", japanese: "有名な", level: 7, category: "形容詞" },
+                { english: "happy", japanese: "幸せな", level: 7, category: "形容詞" },
+                { english: "important", japanese: "重要な", level: 7, category: "形容詞" },
+                { english: "kind", japanese: "親切な", level: 7, category: "形容詞" },
+                { english: "long", japanese: "長い", level: 7, category: "形容詞" },
+                { english: "new", japanese: "新しい", level: 7, category: "形容詞" },
+                { english: "old", japanese: "古い", level: 7, category: "形容詞" },
+                { english: "poor", japanese: "貧しい", level: 7, category: "形容詞" },
+                { english: "quiet", japanese: "静かな", level: 7, category: "形容詞" },
+                { english: "rich", japanese: "裕福な", level: 7, category: "形容詞" },
+                { english: "small", japanese: "小さい", level: 7, category: "形容詞" },
+                { english: "tall", japanese: "背が高い", level: 7, category: "形容詞" },
+                { english: "useful", japanese: "役立つ", level: 7, category: "形容詞" },
+                { english: "warm", japanese: "暖かい", level: 7, category: "形容詞" },
+                { english: "young", japanese: "若い", level: 7, category: "形容詞" },
+                { english: "zebra", japanese: "シマウマ", level: 7, category: "動物" },
+                // 中2レベル
+                { english: "achieve", japanese: "達成する", level: 8, category: "動詞" },
+                { english: "believe", japanese: "信じる", level: 8, category: "動詞" },
+                { english: "consider", japanese: "考慮する", level: 8, category: "動詞" },
+                { english: "develop", japanese: "開発する", level: 8, category: "動詞" },
+                { english: "encourage", japanese: "励ます", level: 8, category: "動詞" },
+                { english: "focus", japanese: "集中する", level: 8, category: "動詞" },
+                { english: "generate", japanese: "生成する", level: 8, category: "動詞" },
+                { english: "improve", japanese: "改善する", level: 8, category: "動詞" },
+                { english: "justify", japanese: "正当化する", level: 8, category: "動詞" },
+                { english: "maintain", japanese: "維持する", level: 8, category: "動詞" },
+                { english: "obtain", japanese: "得る", level: 8, category: "動詞" },
+                { english: "perform", japanese: "実行する", level: 8, category: "動詞" },
+                { english: "realize", japanese: "理解する", level: 8, category: "動詞" },
+                { english: "suggest", japanese: "提案する", level: 8, category: "動詞" },
+                { english: "transform", japanese: "変形させる", level: 8, category: "動詞" },
+                // 中3レベル
+                { english: "abundant", japanese: "豊富な", level: 9, category: "形容詞" },
+                { english: "benevolent", japanese: "慈悲深い", level: 9, category: "形容詞" },
+                { english: "concise", japanese: "簡潔な", level: 9, category: "形容詞" },
+                { english: "diligent", japanese: "勤勉な", level: 9, category: "形容詞" },
+                { english: "eloquent", japanese: "雄弁な", level: 9, category: "形容詞" },
+                { english: "feasible", japanese: "実行可能な", level: 9, category: "形容詞" },
+                { english: "gregarious", japanese: "社交的な", level: 9, category: "形容詞" },
+                { english: "impeccable", japanese: "申し分のない", level: 9, category: "形容詞" },
+                { english: "juxtapose", japanese: "並列する", level: 9, category: "動詞" },
+                { english: "kaleidoscope", japanese: "万華鏡", level: 9, category: "名詞" }
+            ];
+
+            for (const word of initialWords) {
+                try {
+                    // 単語の英語をドキュメントIDとして使用
+                    await db.collection('words').doc(word.english.toLowerCase()).set(word);
+                    console.log(`Added word: ${word.english}`);
+                } catch (error) {
+                    console.error(`Error adding word ${word.english}:`, error);
+                }
+            }
+            console.log("Initial words added to Firestore.");
+        }
+
+        // 初回のみ実行したい場合は、以下のコメントを外して実行後、再度コメントアウト
+        // addInitialWordsToFirestore();
+
+
+        // --- 単語学習ページ ---
+        function displayWords(pageNumber) {
+            const filteredWords = wordData.filter(word => {
+                if (currentLevelFilter === 'all') return true;
+                return Number(word.level) === Number(currentLevelFilter);
+            });
+
+            const startIndex = (pageNumber - 1) * WORDS_PER_PAGE;
+            const endIndex = startIndex + WORDS_PER_PAGE;
+            const wordsToDisplay = filteredWords.slice(startIndex, endIndex);
+
+            wordGrid.innerHTML = '';
+            if (wordsToDisplay.length === 0) {
+                wordGrid.innerHTML = '<p style="text-align: center; color: #666;">表示する単語がありません。</p>';
+                pageInfoSpan.textContent = `ページ 0 / 0`;
+                prevBtn.disabled = true;
+                nextBtn.disabled = true;
+                return;
+            }
+
+            wordsToDisplay.forEach(word => {
+                const progress = userProgress[word.id] || { status: 'new', lastReviewed: null, srsLevel: 0 };
+                const wordCard = document.createElement('div');
+                wordCard.classList.add('word-card');
+                
+                // SRSレベルに応じた色付け
+                let srsClass = '';
+                if (progress.status === 'mastered') {
+                    wordCard.classList.add('mastered');
+                } else if (progress.status === 'learning') {
+                    wordCard.classList.add('learning');
+                } else {
+                    // new or due
+                }
+
+                let srsIndicatorText = '';
+                let srsIndicatorClass = '';
+                if (progress.status === 'new') {
+                    srsIndicatorText = 'New';
+                    srsIndicatorClass = 'srs-new';
+                } else if (progress.status === 'learning') {
+                    srsIndicatorText = `学習中 (${progress.srsLevel}回目)`;
+                    srsIndicatorClass = 'srs-learning';
+                } else if (progress.status === 'mastered') {
+                    srsIndicatorText = '習得済み';
+                    srsIndicatorClass = 'srs-review'; // 習得済みもレビュー対象と考えるため
+                }
+                
+                // 復習期限をチェック
+                if (progress.status !== 'new' && progress.status !== 'mastered' && progress.lastReviewed) {
+                    const nextReviewDate = new Date(progress.lastReviewed.toDate());
+                    nextReviewDate.setDate(nextReviewDate.getDate() + SRS_INTERVALS[progress.srsLevel]);
+                    if (new Date() >= nextReviewDate) {
+                        srsIndicatorText = '復習期限！';
+                        srsIndicatorClass = 'srs-due';
+                    }
+                }
+
+
+                wordCard.innerHTML = `
+                    <div class="srs-indicator ${srsIndicatorClass}">${srsIndicatorText}</div>
+                    <div class="word-front">
+                        <div class="word-english">${word.english}</div>
+                        <div class="word-level">レベル: ${word.level}</div>
+                    </div>
+                    <div class="word-back">
+                        <div class="word-japanese">${word.japanese}</div>
+                        <div class="word-level">レベル: ${word.level}</div>
+                    </div>
+                `;
+                wordCard.addEventListener('click', () => {
+                    wordCard.classList.toggle('flipped');
+                    // 単語を学習中に更新
+                    if (currentUser && progress.status === 'new') {
+                        userProgress[word.id] = { 
+                            status: 'learning', 
+                            lastReviewed: firebase.firestore.Timestamp.now(), 
+                            srsLevel: 0 
+                        };
+                        updateUserData();
+                    }
+                });
+                wordGrid.appendChild(wordCard);
+            });
+
+            const totalPages = Math.ceil(filteredWords.length / WORDS_PER_PAGE);
+            pageInfoSpan.textContent = `ページ ${pageNumber} / ${totalPages}`;
+            prevBtn.disabled = pageNumber === 1;
+            nextBtn.disabled = pageNumber === totalPages;
+        }
+
+        function changePage(direction) {
+            const filteredWords = wordData.filter(word => {
+                if (currentLevelFilter === 'all') return true;
+                return word.level === currentLevelFilter;
+            });
+            const totalPages = Math.ceil(filteredWords.length / WORDS_PER_PAGE);
+
+            currentStudyPage += direction;
+            if (currentStudyPage < 1) currentStudyPage = 1;
+            if (currentStudyPage > totalPages) currentStudyPage = totalPages;
+
+            displayWords(currentStudyPage);
+            window.scrollTo({ top: 0, behavior: 'smooth' }); // ページトップへ
+        }
+
+        function filterByLevel(level) {
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            currentLevelFilter = level;
+            currentStudyPage = 1; // フィルター変更時は1ページ目に戻る
+            displayWords(currentStudyPage);
+            updateStudyStats();
+        }
+
+        function setStudyMode(mode) {
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            currentStudyMode = mode;
+            displayWords(currentStudyPage); // モードによって表示が変わる場合は再描画
+        }
+
+        function loadMoreWords() {
+            alert('更多単語の読み込み機能は現在開発中です！');
+            // 将来的には、Firestoreのページネーション機能を使って単語を追加で読み込むロジックを実装します。
+        }
+
+        // --- 単語復習ページ ---
+        function updateReviewStats() {
+            if (!currentUser) {
+                reviewAvailableCountSpan.textContent = 0;
+                reviewScoreDisplay.textContent = '0%';
+                mistakeCountDisplay.textContent = 0;
+                return;
+            }
+
+            const availableForReview = getWordsForSRSReview();
+            reviewAvailableCountSpan.textContent = availableForReview.length;
+
+            // クイズ結果から正答率を計算（直近の復習セッション）
+            if (quizAnswers.length > 0) {
+                const correctCount = quizAnswers.filter(a => a.correct).length;
+                const score = (correctCount / quizAnswers.length * 100).toFixed(1);
+                reviewScoreDisplay.textContent = `${score}%`;
+            } else {
+                reviewScoreDisplay.textContent = '0%';
+            }
+            mistakeCountDisplay.textContent = mistakes.length;
+
+            if (mistakes.length > 0) {
+                retakeBtn.style.display = 'inline-block';
+            } else {
+                retakeBtn.style.display = 'none';
+            }
+        }
+
+        function getWordsForSRSReview() {
+            const now = firebase.firestore.Timestamp.now();
+            return wordData.filter(word => {
+                const progress = userProgress[word.id];
+                if (!progress || progress.status === 'new' || progress.status === 'mastered') {
+                    return false;
+                }
+
+                if (progress.lastReviewed) {
+                    const lastReviewedDate = progress.lastReviewed.toDate();
+                    const nextReviewInterval = SRS_INTERVALS[progress.srsLevel];
+                    const nextReviewDate = new Date(lastReviewedDate);
+                    nextReviewDate.setDate(nextReviewDate.getDate() + nextReviewInterval);
+                    return now.toDate() >= nextReviewDate;
+                }
+                return false;
+            });
+        }
+
+        function startReview() {
+            isRetakeMode = false;
+            quizAnswers = [];
+            mistakes = [];
+            currentQuizIndex = 0;
+
+            const targetWords = wordData.filter(word => {
+                const progress = userProgress[word.id];
+                return !progress || progress.status === 'new' || progress.status === 'learning';
+            });
+            
+            if (targetWords.length === 0) {
+                alert('学習すべき単語がありません。まずは単語学習ページで単語を学習しましょう！');
+                return;
+            }
+
+            // ランダムにQUIZ_WORDS_COUNT個の単語を選択
+            currentQuizWords = shuffleArray(targetWords).slice(0, QUIZ_WORDS_COUNT);
+            if (currentQuizWords.length === 0) {
+                alert('復習する単語がありません。');
+                return;
+            }
+
+            quizContainer.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            showQuizQuestion();
+        }
+
+        function startSRSReview() {
+            isRetakeMode = false;
+            quizAnswers = [];
+            mistakes = [];
+            currentQuizIndex = 0;
+
+            const srsWords = getWordsForSRSReview();
+            if (srsWords.length === 0) {
+                alert('現在、SRS復習する単語はありません。');
+                return;
+            }
+
+            currentQuizWords = shuffleArray(srsWords).slice(0, QUIZ_WORDS_COUNT);
+            if (currentQuizWords.length === 0) {
+                alert('SRS復習する単語がありません。');
+                return;
+            }
+
+            quizContainer.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            showQuizQuestion();
+        }
+
+
+        function showQuizQuestion() {
+            if (currentQuizIndex >= currentQuizWords.length) {
+                finishQuiz();
+                return;
+            }
+
+            currentQuizWord = currentQuizWords[currentQuizIndex];
+            quizProgressSpan.textContent = `問題 ${currentQuizIndex + 1} / ${currentQuizWords.length}`;
+            quizWordDiv.textContent = currentQuizWord.english;
+            quizOptionsDiv.innerHTML = '';
+            quizResultDiv.style.display = 'none';
+            nextQuizBtn.style.display = 'none';
+            finishQuizBtn.style.display = 'none';
+            selectedOption = null;
+
+            const meanings = wordData.map(w => w.japanese);
+            const correctMeaning = currentQuizWord.japanese;
+            let options = [correctMeaning];
+
+            // 不正解の選択肢を追加
+            while (options.length < 4) {
+                const randomMeaning = meanings[Math.floor(Math.random() * meanings.length)];
+                if (!options.includes(randomMeaning)) {
+                    options.push(randomMeaning);
+                }
+            }
+            options = shuffleArray(options);
+
+            options.forEach(option => {
+                const optionBtn = document.createElement('div');
+                optionBtn.classList.add('quiz-option');
+                optionBtn.textContent = option;
+                optionBtn.addEventListener('click', () => selectQuizOption(optionBtn, option));
+                quizOptionsDiv.appendChild(optionBtn);
+            });
+        }
+
+        function selectQuizOption(selectedBtn, selectedMeaning) {
+            if (selectedOption !== null) return; // 二重クリック防止
+
+            selectedOption = selectedMeaning;
+            const correctMeaning = currentQuizWord.japanese;
+            let isCorrect = false;
+
+            document.querySelectorAll('.quiz-option').forEach(btn => {
+                btn.classList.remove('selected');
+                if (btn === selectedBtn) {
+                    btn.classList.add('selected');
+                }
+                if (btn.textContent === correctMeaning) {
+                    btn.classList.add('correct');
+                } else if (btn.textContent === selectedMeaning) {
+                    btn.classList.add('incorrect');
+                }
+            });
+
+            quizResultDiv.style.display = 'block';
+            if (selectedMeaning === correctMeaning) {
+                resultTextP.textContent = '正解！';
+                quizResultDiv.className = 'quiz-result show correct';
+                isCorrect = true;
+            } else {
+                resultTextP.textContent = `不正解... 正解は「${correctMeaning}」でした。`;
+                quizResultDiv.className = 'quiz-result show incorrect';
+                mistakes.push({
+                    word: currentQuizWord.english,
+                    correctMeaning: correctMeaning,
+                    userAnswer: selectedMeaning,
+                    id: currentQuizWord.id
+                });
+            }
+
+            quizAnswers.push({
+                word: currentQuizWord.english,
+                correct: isCorrect,
+                userAnswer: selectedMeaning,
+                correctMeaning: correctMeaning
+            });
+
+            // SRSレベルの更新
+            updateWordProgress(currentQuizWord.id, isCorrect);
+
+            if (currentQuizIndex < currentQuizWords.length - 1) {
+                nextQuizBtn.style.display = 'inline-block';
+            } else {
+                finishQuizBtn.style.display = 'inline-block';
+            }
+        }
+
+        function updateWordProgress(wordId, isCorrect) {
+            const progress = userProgress[wordId] || { status: 'new', lastReviewed: null, srsLevel: 0 };
+            
+            if (isCorrect) {
+                progress.srsLevel++;
+                if (progress.srsLevel >= SRS_INTERVALS.length -1 ) {
+                    progress.status = 'mastered'; // 全てのSRSレベルをクリアしたら習得済み
+                } else {
+                     progress.status = 'learning';
+                }
+            } else {
+                progress.srsLevel = 0; // 不正解ならSRSレベルをリセット
+                progress.status = 'learning';
+            }
+            progress.lastReviewed = firebase.firestore.Timestamp.now();
+            userProgress[wordId] = progress;
+            updateUserData(); // Firestoreに保存
+        }
+
+
+        function nextQuiz() {
+            currentQuizIndex++;
+            showQuizQuestion();
+        }
+
+        function finishQuiz() {
+            quizContainer.style.display = 'none';
+            resultsContainer.style.display = 'block';
+
+            const correctCount = quizAnswers.filter(a => a.correct).length;
+            const totalQuestions = quizAnswers.length;
+            const score = totalQuestions > 0 ? ((correctCount / totalQuestions) * 100).toFixed(1) : 0;
+            finalScoreP.textContent = `正答率: ${score}%`;
+
+            mistakesTableBody.innerHTML = '';
+            if (mistakes.length > 0) {
+                mistakesSection.style.display = 'block';
+                mistakes.forEach(m => {
+                    const row = document.createElement('tr');
+                    const originalProgress = userProgress[m.id] || {};
+                    let srsChange = 'N/A';
+                    if(originalProgress.srsLevel !== undefined) {
+                        srsChange = `↓レベル${originalProgress.srsLevel}`;
+                    }
+
+                    row.innerHTML = `
+                        <td>${m.word}</td>
+                        <td>${m.correctMeaning}</td>
+                        <td>${m.userAnswer}</td>
+                        <td>${srsChange}</td>
+                    `;
+                    mistakesTableBody.appendChild(row);
+                });
+            } else {
+                mistakesSection.style.display = 'none';
+            }
+
+            // 学習履歴に追加
+            if (currentUser) {
+                const historyEntry = {
+                    date: firebase.firestore.Timestamp.now(),
+                    type: isRetakeMode ? 'retake_quiz' : 'review_quiz',
+                    totalQuestions: totalQuestions,
+                    correctAnswers: correctCount,
+                    mistakes: mistakes.map(m => ({ word: m.word, correctMeaning: m.correctMeaning, userAnswer: m.userAnswer }))
+                };
+                studyHistory.push(historyEntry);
+                updateUserData();
+            }
+            updateReviewStats();
+        }
+
+        function retakeWrongWords() {
+            if (mistakes.length === 0) {
+                alert('間違えた単語がありません。');
+                return;
+            }
+            isRetakeMode = true;
+            currentQuizWords = shuffleArray(mistakes.map(m => wordData.find(w => w.id === m.id))); // 間違えた単語でクイズリストを再構築
+            quizAnswers = [];
+            mistakes = []; // 再テスト開始前にリセット
+            currentQuizIndex = 0;
+            quizContainer.style.display = 'block';
+            resultsContainer.style.display = 'none';
+            showQuizQuestion();
+        }
+
+        function resetQuizPage() {
+            quizContainer.style.display = 'none';
+            resultsContainer.style.display = 'none';
+            quizAnswers = [];
+            mistakes = [];
+            currentQuizIndex = 0;
+            currentQuizWords = [];
+            selectedOption = null;
+            quizResultDiv.style.display = 'none';
+            nextQuizBtn.style.display = 'none';
+            finishQuizBtn.style.display = 'none';
+            retakeBtn.style.display = 'none';
+        }
+
+
+        // --- フラッシュカードページ ---
+        let currentFlashcardWords = [];
+
+        function startFlashcards() {
+            if (!currentUser) {
+                alert('フラッシュカードを利用するにはログインが必要です。');
+                return;
+            }
+            // 覚えた単語または学習中の単語から選択
+            const eligibleWords = wordData.filter(word => {
+                const progress = userProgress[word.id];
+                return progress && (progress.status === 'mastered' || progress.status === 'learning');
+            });
+
+            if (eligibleWords.length === 0) {
+                alert('フラッシュカードに表示する単語がありません。まず単語学習ページで単語を学習しましょう！');
+                return;
+            }
+
+            currentFlashcardWords = shuffleArray(eligibleWords).slice(0, FLASHCARD_WORDS_COUNT);
+            flashcardIndex = 0;
+            flashcardFlipped = false;
+            flashcardContainer.style.display = 'block';
+            displayFlashcard();
+        }
+
+        function displayFlashcard() {
+            if (flashcardIndex >= currentFlashcardWords.length) {
+                alert('すべてのフラッシュカードが終了しました！');
+                flashcardContainer.style.display = 'none';
+                return;
+            }
+            const word = currentFlashcardWords[flashcardIndex];
+            flashcardFrontDiv.textContent = word.english;
+            flashcardBackDiv.textContent = word.japanese;
+            flashcardBackDiv.style.display = 'none'; // 裏面を隠す
+            flashcardWord.classList.remove('flipped'); // めくり状態をリセット
+            flashcardProgressSpan.textContent = `カード ${flashcardIndex + 1} / ${currentFlashcardWords.length}`;
+            flashcardFlipped = false;
+        }
+
+        function flipCard() {
+            flashcardFlipped = !flashcardFlipped;
+            if (flashcardFlipped) {
+                flashcardBackDiv.style.display = 'block';
+                flashcardFrontDiv.style.display = 'none';
+                flashcardWord.classList.add('flipped');
+            } else {
+                flashcardBackDiv.style.display = 'none';
+                flashcardFrontDiv.style.display = 'block';
+                flashcardWord.classList.remove('flipped');
+            }
+        }
+
+        function nextCard() {
+            flashcardIndex++;
+            displayFlashcard();
+        }
+
+        function prevCard() {
+            flashcardIndex--;
+            if (flashcardIndex < 0) {
+                flashcardIndex = 0;
+            }
+            displayFlashcard();
+        }
+
+        function shuffleCards() {
+            currentFlashcardWords = shuffleArray(currentFlashcardWords);
+            flashcardIndex = 0;
+            displayFlashcard();
+        }
+        
+        function markDifficulty(difficulty) {
+            if (!currentUser || currentFlashcardWords.length === 0) return;
+
+            const wordId = currentFlashcardWords[flashcardIndex].id;
+            const progress = userProgress[wordId] || { status: 'new', lastReviewed: null, srsLevel: 0 };
+
+            if (difficulty === 'easy') {
+                progress.srsLevel = Math.min(progress.srsLevel + 1, SRS_INTERVALS.length - 1);
+            } else if (difficulty === 'normal') {
+                // そのままか微増
+                progress.srsLevel = Math.min(progress.srsLevel + 0, SRS_INTERVALS.length - 1); // SRSレベルを維持または少し進める
+            } else if (difficulty === 'difficult') {
+                progress.srsLevel = 0; // 難しい場合はリセット
+            }
+            
+            progress.status = (progress.srsLevel === SRS_INTERVALS.length -1) ? 'mastered' : 'learning';
+            progress.lastReviewed = firebase.firestore.Timestamp.now();
+            userProgress[wordId] = progress;
+            updateUserData();
+            nextCard(); // 次のカードへ
+        }
+
+        function resetFlashcardPage() {
+            flashcardContainer.style.display = 'none';
+            flashcardIndex = 0;
+            flashcardFlipped = false;
+            currentFlashcardWords = [];
+        }
+
+
+        // --- 学習分析ページ ---
+        function updateAnalytics() {
+            if (!currentUser) {
+                totalStudyTimeSpan.textContent = '0';
+                averageScoreSpan.textContent = '0%';
+                streakDaysSpan.textContent = '0';
+                weakWordsSpan.textContent = '0';
+                studyRecommendationsDiv.innerHTML = '<p>ログインして学習データを分析しましょう。</p>';
+                studyHistoryDiv.innerHTML = '<p>学習履歴がありません。</p>';
+                return;
+            }
+
+            // 総学習時間
+            const totalMinutes = Math.floor((new Date() - studyStartTime) / (1000 * 60)); // 仮の時間計算
+            totalStudyTimeSpan.textContent = totalMinutes;
+
+            // 平均正答率
+            let totalCorrect = 0;
+            let totalQuestions = 0;
+            studyHistory.forEach(entry => {
+                if (entry.type === 'review_quiz' || entry.type === 'retake_quiz') {
+                    totalCorrect += entry.correctAnswers;
+                    totalQuestions += entry.totalQuestions;
+                }
+            });
+            const avgScore = totalQuestions > 0 ? ((totalCorrect / totalQuestions) * 100).toFixed(1) : 0;
+            averageScoreSpan.textContent = `${avgScore}%`;
+
+            // 連続学習日数 (ダミーデータ)
+            streakDaysSpan.textContent = getStreakDays(); // 実際のロジックを実装
+
+            // 苦手単語数 (SRSレベルが低い単語など)
+            const weakWordsCount = Object.values(userProgress).filter(p => p.status === 'learning' && p.srsLevel < 2).length;
+            weakWordsSpan.textContent = weakWordsCount;
+
+            // 学習法の提案 (仮)
+            let recommendation = '<p>現在の学習状況は良好です！引き続きSRS復習を活用しましょう。</p>';
+            if (avgScore < 70 && totalQuestions > 0) {
+                recommendation = '<p>正答率が少し低いようです。間違えた単語の再テストを積極的に行いましょう。</p>';
+            } else if (weakWordsCount > 5) {
+                recommendation = '<p>苦手な単語が増えています。これらの単語を重点的にフラッシュカードで復習しましょう。</p>';
+            }
+            studyRecommendationsDiv.innerHTML = recommendation;
+
+            // 学習履歴の表示
+            displayStudyHistory();
+        }
+
+        function getStreakDays() {
+            // 実際のロジックでは、学習履歴から日付を追跡し、連続日数を計算します
+            // ここでは仮にランダムな日数を返します
+            return Math.floor(Math.random() * 30); 
+        }
+
+        function displayStudyHistory() {
+            studyHistoryDiv.innerHTML = '';
+            if (studyHistory.length === 0) {
+                studyHistoryDiv.innerHTML = '<p>学習履歴がありません。</p>';
+                return;
+            }
+
+            studyHistory.sort((a, b) => b.date.toDate() - a.date.toDate()); // 最新のものを上に
+
+            studyHistory.forEach(entry => {
+                const date = entry.date.toDate().toLocaleDateString('ja-JP');
+                let details = '';
+                if (entry.type === 'review_quiz' || entry.type === 'retake_quiz') {
+                    const score = (entry.correctAnswers / entry.totalQuestions * 100).toFixed(1);
+                    details = `クイズ: ${entry.correctAnswers} / ${entry.totalQuestions} (${score}%) 正解`;
+                    if (entry.mistakes && entry.mistakes.length > 0) {
+                        details += `<br>間違えた単語: ${entry.mistakes.map(m => m.word).join(', ')}`;
+                    }
+                } else if (entry.type === 'study_session') {
+                    details = `学習セッション: ${entry.wordsLearned} 単語を学習 (${entry.durationMinutes} 分)`;
+                }
+
+                const historyItem = document.createElement('div');
+                historyItem.style.borderBottom = '1px dotted #eee';
+                historyItem.style.padding = '10px 0';
+                historyItem.innerHTML = `<p><strong>${date}:</strong> ${details}</p>`;
+                studyHistoryDiv.appendChild(historyItem);
+            });
+        }
+
+
+        // --- 統計情報の更新 ---
+        function updateStudyStats() {
+            totalWordsCountSpan.textContent = wordData.length;
+
+            const mastered = Object.values(userProgress).filter(p => p.status === 'mastered').length;
+            masteredWordsCountSpan.textContent = mastered;
+
+            const learning = Object.values(userProgress).filter(p => p.status === 'learning').length;
+            learningWordsCountSpan.textContent = learning;
+
+            const due = getWordsForSRSReview().length;
+            dueWordsCountSpan.textContent = due;
+        }
+
+        // --- タイマー機能 (学習時間計測用) ---
+        function startStudyTimer() {
+            if (!studyStartTime) {
+                studyStartTime = new Date();
+                console.log("Study timer started.");
+            }
+        }
+
+        function stopStudyTimer() {
+            if (studyStartTime && currentUser) {
+                const endTime = new Date();
+                const durationMinutes = Math.floor((endTime - studyStartTime) / (1000 * 60));
+                if (durationMinutes > 0) {
+                    const historyEntry = {
+                        date: firebase.firestore.Timestamp.now(),
+                        type: 'study_session',
+                        durationMinutes: durationMinutes,
+                        wordsLearned: Object.keys(userProgress).length // 仮
+                    };
+                    studyHistory.push(historyEntry);
+                    updateUserData();
+                }
+                studyStartTime = null;
+                console.log("Study timer stopped. Duration:", durationMinutes, "minutes.");
+            }
+        }
+
+        // --- ヘルパー関数 ---
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 初期ロード時にFirebase認証状態をチェック
+        // auth.onAuthStateChanged が初回のページ表示を制御します
+    </script>
+</body>
+</html>
